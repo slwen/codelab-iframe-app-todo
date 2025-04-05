@@ -14,7 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const hasSelection = window.getSelection().toString().length > 0;
       const hasDragAttrs = hasDragAttributes(dragTarget);
       const isDefaultPrevented = event.defaultPrevented;
-      const isUsed = isInteractive || hasSelection || hasDragAttrs || isDefaultPrevented;
+      const isMapLike = hasMapLikeStyles(dragTarget)
+      const isUsed = isInteractive || hasSelection || hasDragAttrs || isDefaultPrevented || isMapLike;
 
       window.parent.postMessage({
         type: 'drag',
@@ -34,7 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const hasSelection = window.getSelection().toString().length > 0;
     const hasDragAttrs = hasDragAttributes(dragTarget);
     const isDefaultPrevented = event.defaultPrevented;
-    const isUsed = isInteractive || hasSelection || hasDragAttrs || isDefaultPrevented;
+    const isMapLike = hasMapLikeStyles(dragTarget)
+    const isUsed = isInteractive || hasSelection || hasDragAttrs || isDefaultPrevented || isMapLike;
 
     window.parent.postMessage({
       type: 'dragStart',
@@ -138,4 +140,9 @@ function hasDragAttributes(el) {
     el.classList.contains('draggable') ||
     el.closest('[draggable]')
   );
+}
+
+function hasMapLikeStyles(el) {
+  const style = window.getComputedStyle(el);
+  return style.touchAction === 'none' || style.userSelect === 'none';
 }
