@@ -1,79 +1,89 @@
-import React, { useRef } from 'react';
+import React, { useRef, memo, useEffect } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
+import { getEmptyImage } from 'react-dnd-html5-backend'; // Correct import
 
 const ItemType = 'todo';
 
-function TodoItem({ todo, index, moveTodo, updateDescription, deleteTodo }) {
-  const ref = useRef(null); // Reference for the entire todo item (drop target)
-  const dragRef = useRef(null); // Reference for the drag handle
+const TodoItem = memo(
+  ({ todo, index, moveTodo, updateDescription, deleteTodo, draggedId, setDraggedId }) => {
+    const itemRef = useRef(null);
+    const dragRef = useRef(null);
 
-  // Drop logic to detect hover and reorder
-  const [{ isOver }, drop] = useDrop({
-    accept: ItemType,
-    hover(item) {
-      if (!ref.current) return;
-      const dragIndex = item.index;
-      const hoverIndex = index;
-      if (dragIndex === hoverIndex) return;
-      moveTodo(dragIndex, hoverIndex);
-      item.index = hoverIndex;
-    },
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-    }),
-  });
+    const [{ isOver }, drop] = useDrop({
+      accept: ItemType,
+      hover(item, monitor) {
+        if (!itemRef.current) return;
+        const dragIndex = item.index;
+        const hoverIndex = index;
 
-  // Drag logic to track dragging state
-  const [{ isDragging }, drag] = useDrag({
-    type: ItemType,
-    item: { index },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
+        if (dragIndex === hoverIndex) return;
 
-  // Attach drag functionality to the drag handle only
-  drag(dragRef);
-  drop(ref);
+        const hoverBoundingRect = itemRef.current.getBoundingClientRect();
+        const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+        const clientOffset = monitor.getClientOffset();
+        const hoverClientY = clientOffset.y - hoverBoundingRect.top;
 
-  return (
-    <div
-      ref={ref}
-      style={{
-        opacity: isDragging ? 0.3 : 1,
-        transition: 'all 0.3s ease',
-        marginBottom: '1px',
-        display: 'flex',
-        alignItems: 'center',
-        borderBottom: isOver ? '2px solid blue' : 'none',
-        background: 'white',
-        padding: 8
-      }}
-    >
-      <span
-        ref={dragRef}
+        if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
+        if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
+
+        moveTodo(dragIndex, hoverIndex);
+        item.index = hoverIndex;
+      },
+      collect: (monitor) => ({
+        isOver: monitor.isOver(),
+      }),
+    });
+
+    // Correctly destructure useDrag to include the preview ref
+    const [{ isDragging }, drag, preview] = useDrag({
+      type: ItemType,
+      item: () => {
+        setDraggedId(todo.id);
+        return { id: todo.id, index, description: todo.description };
+      },
+      collect: (monitor) => ({
+        isDragging: monitor.isDragging(),
+      }),
+      end: () => {
+        setDraggedId(null);
+      },
+    });
+
+    // Suppress default drag preview
+    useEffect(() => {
+      preview(getEmptyImage(), { captureDraggingState: true });
+    }, [preview]);
+
+    drag(dragRef);
+    drop(itemRef);
+
+    const isItemDragged = draggedId === todo.id;
+
+    return (
+      <div
+        ref={itemRef}
+        className="todo-item"
         style={{
-          cursor: 'move',
-          marginRight: '10px',
-          userSelect: 'none',
-          display: 'block',
-          padding: 4
+          opacity: isItemDragged ? 0 : 1,
         }}
       >
-        ☰
-      </span>
-      <input
-        value={todo.description}
-        onChange={(e) => updateDescription(todo.id, e.target.value)}
-        style={{ marginRight: '10px', flexGrow: 1 }}
-      />
-      <button
-        style={{ background: 'firebrick', color: 'white' }}
-        onClick={() => deleteTodo(todo.id)}>
-          ⌫
+        <span ref={dragRef} className="drag-handle">☰</span>
+        <input
+          value={todo.description}
+          onChange={(e) => updateDescription(todo.id, e.target.value)}
+          className="todo-input"
+        />
+        <button
+          className="todo-delete"
+          onClick={() => deleteTodo(todo.id)}
+        >
+          ✗
         </button>
-    </div>
-  );
-}
+      </div>
+    );
+  }
+);
+
+TodoItem.displayName = 'TodoItem';
 
 export default TodoItem;

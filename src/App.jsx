@@ -1,14 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import update from 'immutability-helper';
 import TodoItem from './TodoItem';
+import CustomDragLayer from './CustomDragLayer';
 import './App.css';
 
-// Main TodoApp component
 function TodoApp() {
   const [todos, setTodos] = useState([]);
+  const [draggedId, setDraggedId] = useState(null); // Track the dragged item's ID
   const nextId = useRef(0);
-  const contentRef = useRef(null); // Reference to the content container
 
   const addTodo = () => {
     const newTodo = { id: nextId.current++, description: '' };
@@ -23,46 +24,45 @@ function TodoApp() {
     setTodos(todos.map((todo) => (todo.id === id ? { ...todo, description } : todo)));
   };
 
-  const moveTodo = (fromIndex, toIndex) => {
-    const newTodos = [...todos];
-    const [movedTodo] = newTodos.splice(fromIndex, 1);
-    newTodos.splice(toIndex, 0, movedTodo);
-    setTodos(newTodos);
-  };
+  const moveTodo = useCallback((dragIndex, hoverIndex) => {
+    setTodos((prevTodos) =>
+      update(prevTodos, {
+        $splice: [
+          [dragIndex, 1],
+          [hoverIndex, 0, prevTodos[dragIndex]],
+        ],
+      })
+    );
+  }, []);
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div
-        ref={contentRef}
-        id={"draggable-element"}
-        style={{
-          padding: '20px',
-          background: '#f2f2f2',
-          borderRadius: 8
-        }}>
-        <h1>Todo App</h1>
-        <button
-          onClick={addTodo}
-          style={{
-              marginBottom: '20px',
-              background: 'dodgerblue',
-              color: 'white'
-            }}>
-          Add Todo
-        </button>
-        <div>
+      <div style={{ background: '#f2f2f2', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ padding: 8 }}>
+          <h1>Todo App</h1>
+          <button
+            onClick={addTodo}
+            style={{ background: 'dodgerblue', color: 'white', padding: "12px 16px" }}
+          >
+            Add Todo
+          </button>
+        </div>
+        <div style={{ padding: '32px 16px' }}>
           {todos.map((todo, index) => (
             <TodoItem
-              key={todo.id}
+              key={todo.id} // Ensure key is stable and unique
               todo={todo}
               index={index}
               moveTodo={moveTodo}
               updateDescription={updateDescription}
               deleteTodo={deleteTodo}
+              draggedId={draggedId}
+              setDraggedId={setDraggedId}
             />
           ))}
         </div>
       </div>
+      <CustomDragLayer />
     </DndProvider>
   );
 }
