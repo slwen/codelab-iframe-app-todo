@@ -91,8 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const sendResizeMessage = () => {
     const contentWidth = document.documentElement.offsetWidth;
     const contentHeight = document.documentElement.offsetHeight;
-    console.log('Resize:', {width: contentWidth,
-      height: contentHeight});
     window.parent.postMessage(
       {
         type: 'resize',
